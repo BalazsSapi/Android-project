@@ -3,9 +3,8 @@ services:
   backend:
     build:
       context: .
-      # Ha ARM hoston vagy (Apple Silicon), ez segít:
-      platforms:
-        - linux/arm64
+    env_file:
+      - .env
     ports:
       - '8080:8080'
     depends_on:
@@ -14,11 +13,12 @@ services:
       redis:
         condition: service_healthy
     environment:
-      # DATABASE_URL: postgres://user:password@db:5432/dbname
-      # REDIS_URL: redis://redis:6379 # <-- Ezt fogja olvasni a backend
+      DATABASE_URL: postgres://user:password@db:5432/dbname
+      REDIS_URL: redis://redis:6379 # <-- Ezt fogja olvasni a backend
       # Alternatív bontva:
       REDIS_HOST: redis
       REDIS_PORT: 6379
+    
 
   db:
     image: postgres:17
