@@ -4,10 +4,10 @@ services:
     build:
       context: .
       # Ha ARM hoston vagy (Apple Silicon), ez segít:
-      platforms:
-        - linux/arm64
     ports:
       - '8080:8080'
+    env_file:
+      - .env.example
     depends_on:
       db:
         condition: service_healthy
