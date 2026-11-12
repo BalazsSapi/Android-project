@@ -6,14 +6,20 @@ import kotlinx.serialization.Serializable
 object Login
 
 @Serializable
+object Register
+
+@Serializable
 object Home
 
-/** A bejelentkezés utáni képernyők (Home, Profile) csoportja. */
 @Serializable
-object MainGraph
+object Profile
 
 @Serializable
-data class Profile(
-    val userId: String = "guest",
-    val userName: String = "Guest"
-)
+object AddHabit
+
+@Serializable
+object CreateSchedule
+
+/** Group of the screens available after login. */
+@Serializable
+object MainGraph

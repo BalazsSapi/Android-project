@@ -7,7 +7,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -15,23 +17,30 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
+import com.example.lab1.utils.SessionManager
 
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager.getInstance(context) }
+
+    // Auto-login: skip Login when a token is already stored.
+    val startDestination = remember {
+        if (sessionManager.isLoggedIn) MainGraph else Login
+    }
 
     val bottomNavItems = listOf(
         BottomNavItem(route = Home, label = "Home"),
-        BottomNavItem(route = Profile(), label = "Profile")
+        BottomNavItem(route = Profile, label = "Profile")
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // Az alsó sáv csak a MainGraph-on belül látszik (Login-on nem)
+    // The bottom bar is only shown on the primary screens (Home, Profile)
     val showBottomBar = currentDestination?.hierarchy?.any {
-        it.hasRoute(MainGraph::class)
+        it.hasRoute(Home::class) || it.hasRoute(Profile::class)
     } == true
 
     Scaffold(
@@ -60,12 +69,26 @@ fun AppNavGraph() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Login,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable<Login> {
                 LoginScreen(
                     onLoginSuccess = {
+                        navController.navigate(MainGraph) {
+                            popUpTo<Login> { inclusive = true }
+                        }
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate(Register)
+                    }
+                )
+            }
+
+            composable<Register> {
+                RegisterScreen(
+                    onRegisterSuccess = {
+                        // Signup also returns a session, so the user is logged in right away
                         navController.navigate(MainGraph) {
                             popUpTo<Login> { inclusive = true }
                         }
@@ -76,14 +99,54 @@ fun AppNavGraph() {
             navigation<MainGraph>(startDestination = Home) {
                 composable<Home> {
                     HomeScreen(
-                        onNavigateToProfile = { userId, userName ->
-                            navController.navigate(Profile(userId, userName))
+                        onAddHabit = {
+                            navController.navigate(AddHabit) { launchSingleTop = true }
+                        },
+                        onCreateSchedule = {
+                            navController.navigate(CreateSchedule) { launchSingleTop = true }
+                        },
+                        onLogout = {
+                            navController.navigate(Login) {
+                                popUpTo<MainGraph> { inclusive = true }
+                                launchSingleTop = true
+                            }
                         }
                     )
                 }
-                composable<Profile> { backStackEntry ->
-                    val profile: Profile = backStackEntry.toRoute()
-                    ProfileScreen(profile.userId, profile.userName)
+
+                composable<Profile> {
+                    ProfileScreen()
+                }
+
+                composable<AddHabit> {
+                    AddHabitScreen(
+                        onBack = { navController.popBackStack() },
+                        onSaved = {
+                            navController.navigate(Home) {
+                                // Recreate Home so it reloads the habits from the backend
+                                popUpTo<Home> { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                        onNavigateToCreateSchedule = {
+                            navController.navigate(CreateSchedule) { launchSingleTop = true }
+                        }
+                    )
+                }
+
+                composable<CreateSchedule> {
+                    CreateScheduleScreen(
+                        onBack = { navController.popBackStack() },
+                        onSaved = {
+                            navController.navigate(Home) {
+                                popUpTo<Home> { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                        onNavigateToAddHabit = {
+                            navController.navigate(AddHabit) { launchSingleTop = true }
+                        }
+                    )
                 }
             }
         }
