@@ -16,7 +16,7 @@ data class HabitResponse(
     val name: String,
     val description: String? = null,
     val category: HabitCategory,
-    // The habit nested in a schedule may come without a goal (see the sample response in the PDF)
+    // A schedule-ba ágyazott habit a PDF mintaválasza szerint nem mindig tartalmazza a goal-t
     val goal: String = "",
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null

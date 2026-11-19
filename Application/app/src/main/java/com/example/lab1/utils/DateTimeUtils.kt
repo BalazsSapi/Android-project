@@ -47,6 +47,12 @@ object DateTimeUtils {
         return timeFormatter.format(parsed)
     }
 
+    // ISO időbélyegből a (helyi időzóna szerinti) yyyy-MM-dd dátum
+    fun formatDate(iso: String?): String? {
+        val parsed = parseIso(iso) ?: return null
+        return dateFormatter.format(parsed)
+    }
+
     fun buildIsoDateTime(date: String, time: String): String {
         val localFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).apply {
             timeZone = TimeZone.getDefault()

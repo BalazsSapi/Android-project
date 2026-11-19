@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -29,8 +30,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.lab1.network.HabitRepository
 import com.example.lab1.network.models.HabitCategory
+import com.example.lab1.utils.ImageUrls
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -205,10 +208,23 @@ fun AddHabitScreen(
         Text("Category", style = MaterialTheme.typography.titleSmall)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(uiState.categories, key = { it.id }) { category ->
+                // A kategória ikonját a backend iconUrl mezőjéből töltjük be (ha van)
+                val iconUrl = ImageUrls.resolve(category.iconUrl)
                 FilterChip(
                     selected = uiState.selectedCategoryId == category.id,
                     onClick = { viewModel.onCategorySelected(category.id) },
-                    label = { Text(category.name) }
+                    label = { Text(category.name) },
+                    leadingIcon = if (iconUrl != null) {
+                        {
+                            AsyncImage(
+                                model = iconUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else {
+                        null
+                    }
                 )
             }
         }

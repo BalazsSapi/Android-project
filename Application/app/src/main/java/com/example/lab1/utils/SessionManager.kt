@@ -23,6 +23,22 @@ class SessionManager private constructor(context: Context) {
         }.apply()
     }
 
+    // Token frissítés (refresh) után: a felhasználó adatait nem érinti
+    fun updateTokens(accessToken: String?, refreshToken: String?) {
+        prefs.edit().apply {
+            putString(KEY_ACCESS_TOKEN, accessToken)
+            putString(KEY_REFRESH_TOKEN, refreshToken)
+        }.apply()
+    }
+
+    // Profil frissítés után: csak a megadott (nem null) értékeket írja felül
+    fun updateUser(email: String?, username: String?) {
+        prefs.edit().apply {
+            if (email != null) putString(KEY_EMAIL, email)
+            if (username != null) putString(KEY_USERNAME, username)
+        }.apply()
+    }
+
     fun clear() = prefs.edit().clear().apply()
 
     val accessToken: String? get() = prefs.getString(KEY_ACCESS_TOKEN, null)

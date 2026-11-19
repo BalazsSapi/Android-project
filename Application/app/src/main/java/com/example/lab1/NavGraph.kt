@@ -17,6 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.example.lab1.utils.SessionManager
 
 @Composable
@@ -25,7 +26,7 @@ fun AppNavGraph() {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager.getInstance(context) }
 
-    // Auto-login: skip Login when a token is already stored.
+    // Auto-login: ha van mentett token, a Login-t átugorjuk.
     val startDestination = remember {
         if (sessionManager.isLoggedIn) MainGraph else Login
     }
@@ -38,7 +39,7 @@ fun AppNavGraph() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // The bottom bar is only shown on the primary screens (Home, Profile)
+    // Az alsó sáv csak az elsődleges képernyőkön (Home, Profile) látszik
     val showBottomBar = currentDestination?.hierarchy?.any {
         it.hasRoute(Home::class) || it.hasRoute(Profile::class)
     } == true
@@ -81,6 +82,9 @@ fun AppNavGraph() {
                     },
                     onNavigateToRegister = {
                         navController.navigate(Register)
+                    },
+                    onNavigateToResetPassword = {
+                        navController.navigate(ResetPassword)
                     }
                 )
             }
@@ -88,11 +92,17 @@ fun AppNavGraph() {
             composable<Register> {
                 RegisterScreen(
                     onRegisterSuccess = {
-                        // Signup also returns a session, so the user is logged in right away
+                        // A signup is session-t ad, ezért rögtön be vagyunk lépve
                         navController.navigate(MainGraph) {
                             popUpTo<Login> { inclusive = true }
                         }
                     }
+                )
+            }
+
+            composable<ResetPassword> {
+                ResetPasswordScreen(
+                    onBackToLogin = { navController.popBackStack() }
                 )
             }
 
@@ -105,6 +115,9 @@ fun AppNavGraph() {
                         onCreateSchedule = {
                             navController.navigate(CreateSchedule) { launchSingleTop = true }
                         },
+                        onScheduleClick = { scheduleId ->
+                            navController.navigate(ScheduleDetails(scheduleId)) { launchSingleTop = true }
+                        },
                         onLogout = {
                             navController.navigate(Login) {
                                 popUpTo<MainGraph> { inclusive = true }
@@ -115,7 +128,27 @@ fun AppNavGraph() {
                 }
 
                 composable<Profile> {
-                    ProfileScreen()
+                    ProfileScreen(
+                        onAddHabit = {
+                            navController.navigate(AddHabit) { launchSingleTop = true }
+                        },
+                        onEditProfile = {
+                            navController.navigate(EditProfile) { launchSingleTop = true }
+                        },
+                        onLoggedOut = {
+                            navController.navigate(Login) {
+                                popUpTo<MainGraph> { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    )
+                }
+
+                composable<EditProfile> {
+                    EditProfileScreen(
+                        onBack = { navController.popBackStack() },
+                        onSaved = { navController.popBackStack() }
+                    )
                 }
 
                 composable<AddHabit> {
@@ -123,7 +156,7 @@ fun AppNavGraph() {
                         onBack = { navController.popBackStack() },
                         onSaved = {
                             navController.navigate(Home) {
-                                // Recreate Home so it reloads the habits from the backend
+                                // Home újralétrehozása, hogy újratöltse a habiteket a backendről
                                 popUpTo<Home> { inclusive = true }
                                 launchSingleTop = true
                             }
@@ -146,6 +179,34 @@ fun AppNavGraph() {
                         onNavigateToAddHabit = {
                             navController.navigate(AddHabit) { launchSingleTop = true }
                         }
+                    )
+                }
+
+                composable<ScheduleDetails> { backStackEntry ->
+                    val route: ScheduleDetails = backStackEntry.toRoute()
+                    ScheduleDetailsScreen(
+                        scheduleId = route.scheduleId,
+                        onBack = { navController.popBackStack() },
+                        onEdit = {
+                            navController.navigate(EditSchedule(route.scheduleId)) { launchSingleTop = true }
+                        },
+                        onDeleted = {
+                            // Törlés után a Home újratöltődik
+                            navController.navigate(Home) {
+                                popUpTo<Home> { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    )
+                }
+
+                composable<EditSchedule> { backStackEntry ->
+                    val route: EditSchedule = backStackEntry.toRoute()
+                    EditScheduleScreen(
+                        scheduleId = route.scheduleId,
+                        onBack = { navController.popBackStack() },
+                        // Mentés után vissza a részletekhez, ami újratölti az adatokat
+                        onSaved = { navController.popBackStack() }
                     )
                 }
             }

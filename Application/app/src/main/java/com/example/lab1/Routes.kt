@@ -9,10 +9,16 @@ object Login
 object Register
 
 @Serializable
+object ResetPassword
+
+@Serializable
 object Home
 
 @Serializable
 object Profile
+
+@Serializable
+object EditProfile
 
 @Serializable
 object AddHabit
@@ -20,6 +26,14 @@ object AddHabit
 @Serializable
 object CreateSchedule
 
-/** Group of the screens available after login. */
+/** Egy schedule részletei (GET /schedule/{id}) */
+@Serializable
+data class ScheduleDetails(val scheduleId: Long)
+
+/** Egy schedule szerkesztése (PATCH /schedule/{id}) */
+@Serializable
+data class EditSchedule(val scheduleId: Long)
+
+/** A bejelentkezés utáni képernyők csoportja. */
 @Serializable
 object MainGraph

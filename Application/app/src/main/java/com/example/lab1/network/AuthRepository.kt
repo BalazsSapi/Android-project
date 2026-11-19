@@ -3,6 +3,8 @@ package com.example.lab1.network
 import com.example.lab1.network.models.ApiError
 import com.example.lab1.network.models.LoginRequest
 import com.example.lab1.network.models.LoginResponse
+import com.example.lab1.network.models.ResetPasswordRequest
+import com.example.lab1.network.models.TokensDto
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -40,6 +42,19 @@ class AuthRepository(
             profileImage = imagePart
         )
         response.requireBody("Registration failed")
+    }
+
+    // Új access + refresh token kérése a mentett refresh tokennel (auto-login a splash alatt)
+    suspend fun refreshTokens(refreshToken: String): Result<TokensDto> = runCatching {
+        api.refresh("Bearer $refreshToken").bodyOrThrow("Token refresh failed")
+    }
+
+    suspend fun resetPassword(email: String): Result<Unit> = runCatching {
+        api.resetPassword(ResetPasswordRequest(email)).requireSuccess("Password reset failed")
+    }
+
+    suspend fun logout(): Result<Unit> = runCatching {
+        api.logout().requireSuccess("Logout failed")
     }
 
     private fun Response<LoginResponse>.requireBody(fallback: String): LoginResponse {

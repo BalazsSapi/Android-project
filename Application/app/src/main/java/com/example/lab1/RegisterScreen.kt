@@ -30,10 +30,15 @@ data class RegisterUiState(
     val username: String = "",
     val email: String = "",
     val password: String = "",
+    val confirmPassword: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
     val isRegistered: Boolean = false
-)
+) {
+    // A két jelszó eltér (csak akkor jelezzük, ha a megerősítő mező már nem üres)
+    val passwordMismatch: Boolean
+        get() = confirmPassword.isNotEmpty() && password != confirmPassword
+}
 
 class RegisterViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -55,12 +60,16 @@ class RegisterViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(password = value, error = null) }
     }
 
+    fun onConfirmPasswordChange(value: String) {
+        _uiState.update { it.copy(confirmPassword = value, error = null) }
+    }
+
     fun register() {
         val state = _uiState.value
         val username = state.username.trim()
         val email = state.email.trim()
 
-        validate(username, email, state.password)?.let { message ->
+        validate(username, email, state.password, state.confirmPassword)?.let { message ->
             _uiState.update { it.copy(error = message) }
             return
         }
@@ -100,11 +109,17 @@ class RegisterViewModel(application: Application) : AndroidViewModel(application
         )
     }
 
-    private fun validate(username: String, email: String, password: String): String? = when {
+    private fun validate(
+        username: String,
+        email: String,
+        password: String,
+        confirmPassword: String
+    ): String? = when {
         username.isEmpty() -> "A felhasználónév megadása kötelező"
         email.isEmpty() -> "Az email megadása kötelező"
         !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Adj meg érvényes email címet"
         password.length < 6 -> "A jelszónak legalább 6 karakterből kell állnia"
+        password != confirmPassword -> "A jelszavak nem egyeznek"
         else -> null
     }
 }
@@ -165,12 +180,33 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Jelszó eltérés esetén mindkét mező piros keretet kap, a magyarázat a megerősítő mező alatt jelenik meg
         OutlinedTextField(
             value = uiState.password,
             onValueChange = viewModel::onPasswordChange,
             label = { Text("Jelszó") },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = uiState.passwordMismatch,
+            enabled = !uiState.isLoading,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = uiState.confirmPassword,
+            onValueChange = viewModel::onConfirmPasswordChange,
+            label = { Text("Jelszó megerősítése") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = uiState.passwordMismatch,
+            supportingText = {
+                if (uiState.passwordMismatch) {
+                    Text("A két jelszó nem egyezik meg!")
+                }
+            },
             enabled = !uiState.isLoading,
             singleLine = true,
             modifier = Modifier.fillMaxWidth()

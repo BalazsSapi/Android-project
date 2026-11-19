@@ -53,6 +53,9 @@ data class CreateScheduleUiState(
     val startTime: String = DateTimeUtils.currentTime(),
     val durationMinutes: String = "30",
     val repeatPattern: String = REPEAT_DAILY,
+    // Custom ismétlés: a kiválasztott napok (1 = hétfő ... 7 = vasárnap) és a hetek száma
+    val selectedDays: Set<Int> = emptySet(),
+    val numberOfWeeks: String = "4",
     val notes: String = "",
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
@@ -64,6 +67,7 @@ data class CreateScheduleUiState(
         const val REPEAT_DAILY = "daily"
         const val REPEAT_WEEKDAYS = "weekdays"
         const val REPEAT_WEEKENDS = "weekends"
+        const val REPEAT_CUSTOM = "custom"
     }
 }
 
@@ -122,6 +126,19 @@ class CreateScheduleViewModel(application: Application) : AndroidViewModel(appli
         _uiState.update { it.copy(repeatPattern = value, error = null) }
     }
 
+    fun onDayToggled(day: Int) {
+        _uiState.update { state ->
+            val days = if (day in state.selectedDays) state.selectedDays - day else state.selectedDays + day
+            state.copy(selectedDays = days, error = null)
+        }
+    }
+
+    fun onNumberOfWeeksChange(value: String) {
+        if (value.all { it.isDigit() }) {
+            _uiState.update { it.copy(numberOfWeeks = value, error = null) }
+        }
+    }
+
     fun onNotesChange(value: String) {
         _uiState.update { it.copy(notes = value, error = null) }
     }
@@ -131,11 +148,15 @@ class CreateScheduleViewModel(application: Application) : AndroidViewModel(appli
         if (state.isSaving) return
 
         val duration = state.durationMinutes.toIntOrNull()
+        val weeks = state.numberOfWeeks.toIntOrNull()
+        val isCustomDays = state.repeatPattern == CreateScheduleUiState.REPEAT_CUSTOM
         val validationError = when {
             state.selectedHabitId == null -> "Choose a habit"
             state.date.isBlank() -> "Choose a date"
             state.startTime.isBlank() -> "Choose a start time"
             duration == null || duration <= 0 -> "Duration must be at least 1 minute"
+            isCustomDays && state.selectedDays.isEmpty() -> "Choose at least one day"
+            isCustomDays && (weeks == null || weeks <= 0) -> "Number of weeks must be at least 1"
             else -> null
         }
         if (validationError != null) {
@@ -150,8 +171,9 @@ class CreateScheduleViewModel(application: Application) : AndroidViewModel(appli
         _uiState.update { it.copy(isSaving = true, error = null) }
 
         viewModelScope.launch {
-            val result = if (state.repeatPattern == CreateScheduleUiState.REPEAT_NONE) {
-                scheduleRepository.createCustomSchedule(
+            val result = when (state.repeatPattern) {
+                // Egyszeri: POST /schedule/custom
+                CreateScheduleUiState.REPEAT_NONE -> scheduleRepository.createCustomSchedule(
                     habitId = state.selectedHabitId!!,
                     date = state.date,
                     startTime = startIso,
@@ -159,8 +181,20 @@ class CreateScheduleViewModel(application: Application) : AndroidViewModel(appli
                     durationMinutes = duration,
                     notes = notes
                 ).map { listOf(it) }
-            } else {
-                scheduleRepository.createRecurringSchedule(
+
+                // Egyedi napok: POST /schedule/recurring/weekdays
+                CreateScheduleUiState.REPEAT_CUSTOM -> scheduleRepository.createWeekdaySchedule(
+                    habitId = state.selectedHabitId!!,
+                    startTime = startIso,
+                    endTime = endIso,
+                    durationMinutes = duration,
+                    daysOfWeek = state.selectedDays.sorted(),
+                    numberOfWeeks = weeks ?: 4,
+                    notes = notes
+                )
+
+                // Napi / hétköznapi / hétvégi: POST /schedule/recurring
+                else -> scheduleRepository.createRecurringSchedule(
                     habitId = state.selectedHabitId!!,
                     startTime = startIso,
                     endTime = endIso,
@@ -187,7 +221,7 @@ class CreateScheduleViewModel(application: Application) : AndroidViewModel(appli
     }
 }
 
-private fun showDatePicker(
+internal fun showDatePicker(
     context: Context,
     currentDate: String,
     onDateSelected: (String) -> Unit
@@ -215,7 +249,8 @@ private fun showDatePicker(
     ).show()
 }
 
-private fun showTimePicker(
+// A schedule szerkesztő képernyő is ezt használja, ezért nem private
+internal fun showTimePicker(
     context: Context,
     currentTime: String,
     onTimeSelected: (String) -> Unit
@@ -237,12 +272,18 @@ private fun showTimePicker(
     ).show()
 }
 
-// Value sent to the backend paired with the label shown in the UI
+// Backendnek küldött érték és a megjelenített felirat
 private val repeatOptions = listOf(
     CreateScheduleUiState.REPEAT_NONE to "Once",
     CreateScheduleUiState.REPEAT_DAILY to "Daily",
     CreateScheduleUiState.REPEAT_WEEKDAYS to "Weekdays",
-    CreateScheduleUiState.REPEAT_WEEKENDS to "Weekends"
+    CreateScheduleUiState.REPEAT_WEEKENDS to "Weekends",
+    CreateScheduleUiState.REPEAT_CUSTOM to "Custom"
+)
+
+// Custom ismétlés napjai: 1 = hétfő ... 7 = vasárnap (a backend ezt várja)
+private val dayOptions = listOf(
+    1 to "Mon", 2 to "Tue", 3 to "Wed", 4 to "Thu", 5 to "Fri", 6 to "Sat", 7 to "Sun"
 )
 
 @Composable
@@ -340,6 +381,25 @@ fun CreateScheduleScreen(
             }
         }
 
+        // Custom ismétlésnél a napokat és a hetek számát is meg kell adni
+        if (uiState.repeatPattern == CreateScheduleUiState.REPEAT_CUSTOM) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(dayOptions) { (day, label) ->
+                    FilterChip(
+                        selected = day in uiState.selectedDays,
+                        onClick = { viewModel.onDayToggled(day) },
+                        label = { Text(label) }
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = uiState.numberOfWeeks,
+                onValueChange = viewModel::onNumberOfWeeksChange,
+                label = { Text("Number of weeks") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         OutlinedTextField(
             value = uiState.notes,
             onValueChange = viewModel::onNotesChange,
@@ -347,12 +407,25 @@ fun CreateScheduleScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Button(
-            onClick = viewModel::createSchedule,
-            enabled = !uiState.isSaving,
-            modifier = Modifier.fillMaxWidth()
+        // Create: mentés, Cancel: elvetés (vissza az előző képernyőre)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Create schedule")
+            OutlinedButton(
+                onClick = onBack,
+                enabled = !uiState.isSaving,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Cancel")
+            }
+            Button(
+                onClick = viewModel::createSchedule,
+                enabled = !uiState.isSaving,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Create schedule")
+            }
         }
 
         TextButton(

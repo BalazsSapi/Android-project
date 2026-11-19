@@ -1,6 +1,7 @@
 package com.example.lab1
 
 import android.app.Application
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -90,6 +91,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 fun HomeScreen(
     onAddHabit: () -> Unit,
     onCreateSchedule: () -> Unit,
+    onScheduleClick: (Long) -> Unit,
     onLogout: () -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
@@ -164,7 +166,7 @@ fun HomeScreen(
             item { Text("Nothing scheduled today") }
         } else {
             items(uiState.schedules, key = { it.id }) { schedule ->
-                ScheduleCard(schedule)
+                ScheduleCard(schedule, onClick = { onScheduleClick(schedule.id) })
             }
         }
 
@@ -182,11 +184,12 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ScheduleCard(schedule: ScheduleResponse) {
+private fun ScheduleCard(schedule: ScheduleResponse, onClick: () -> Unit) {
     val categoryName = schedule.habit?.category?.name ?: "Other"
     val startTime = DateTimeUtils.formatTime(schedule.startTime).ifBlank { "--:--" }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    // A kártyára koppintva megnyílnak a schedule részletei
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(modifier = Modifier.padding(12.dp)) {
             Column(Modifier.width(64.dp)) {
                 Text(startTime, style = MaterialTheme.typography.titleSmall)
@@ -202,8 +205,13 @@ private fun ScheduleCard(schedule: ScheduleResponse) {
                     Text(it, style = MaterialTheme.typography.bodySmall)
                 }
             }
-            schedule.status?.let {
-                Text("• $it", style = MaterialTheme.typography.labelSmall)
+            // Státusz: teljesítve (✓) vagy még nem teljesített (○)
+            schedule.status?.let { status ->
+                val done = status.equals("Completed", ignoreCase = true)
+                Text(
+                    text = if (done) "✓ $status" else "○ $status",
+                    style = MaterialTheme.typography.labelSmall
+                )
             }
         }
     }

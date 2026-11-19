@@ -10,6 +10,13 @@ internal fun <T> Response<T>.bodyOrThrow(fallbackMessage: String): T {
     error(parseErrorMessage(this, fallbackMessage))
 }
 
+// Olyan hívásokhoz, ahol nincs (vagy nem kell) válasz-body: pl. 204-es DELETE, logout
+internal fun Response<*>.requireSuccess(fallbackMessage: String) {
+    if (!isSuccessful) {
+        error(parseErrorMessage(this, fallbackMessage))
+    }
+}
+
 private fun parseErrorMessage(response: Response<*>, fallbackMessage: String): String {
     val raw = response.errorBody()?.string()
     if (!raw.isNullOrBlank()) {

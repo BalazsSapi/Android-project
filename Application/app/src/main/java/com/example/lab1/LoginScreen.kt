@@ -102,6 +102,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToResetPassword: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LoginViewModel = viewModel()
 ) {
@@ -155,7 +156,16 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        // Elfelejtett jelszó: a Reset Password képernyőre visz
+        TextButton(
+            onClick = onNavigateToResetPassword,
+            enabled = !uiState.isLoading,
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Elfelejtett jelszó?")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = viewModel::login,

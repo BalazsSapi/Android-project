@@ -46,6 +46,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.core)        // MoreVert ikon a menühöz
 
     // Splash screen
     implementation(libs.androidx.core.splashscreen)
@@ -60,6 +61,9 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.kotlinx.serialization)       // lets Retrofit (de)serialize JSON
     implementation(libs.okhttp.logging.interceptor)           // logs requests/responses to Logcat
+
+    // Képek betöltése URL-ből (kategória ikonok, profilkép)
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

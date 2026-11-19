@@ -17,7 +17,7 @@ object RetrofitClient {
 
     // 10.0.2.2 is the emulator's alias for the host machine's localhost.
     // Physical device: http://<your-computer-LAN-IP>:8080/
-    private const val BASE_URL = "http://10.0.2.2:8080/"
+    const val BASE_URL = "http://10.0.2.2:8080/"
 
     @Volatile
     private var appContext: Context? = null
@@ -29,16 +29,18 @@ object RetrofitClient {
     val json = Json {
         ignoreUnknownKeys = true
         explicitNulls = false
-        encodeDefaults = true // defaults such as is_custom and repeatDays must be sent too
+        encodeDefaults = true // a is_custom, repeatDays stb. alapértékeket is el kell küldeni
     }
 
-    // Adds the stored access token to every request
+    // Minden kéréshez hozzáadja a mentett access tokent
+    // (ha a kérésnek már van Authorization fejléce, pl. a refresh hívásnál, azt nem írja felül)
     private val authInterceptor = Interceptor { chain ->
+        val original = chain.request()
         val token = appContext?.let { SessionManager.getInstance(it).accessToken }
-        val request = if (token.isNullOrBlank()) {
-            chain.request()
+        val request = if (token.isNullOrBlank() || original.header("Authorization") != null) {
+            original
         } else {
-            chain.request().newBuilder()
+            original.newBuilder()
                 .header("Authorization", "Bearer $token")
                 .build()
         }

@@ -16,6 +16,10 @@ class HabitRepository(
         api.getHabits().bodyOrThrow("Failed to load habits")
     }
 
+    suspend fun getHabitsByUser(userId: Long): Result<List<HabitResponse>> = runCatching {
+        api.getHabitsByUser(userId).bodyOrThrow("Failed to load habits")
+    }
+
     suspend fun createHabit(
         name: String,
         description: String,
